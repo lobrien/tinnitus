@@ -26,12 +26,16 @@ This video provides a practical demonstration of how notched white noise and neu
 
 https://www.youtube.com/watch?v=O8ypzXTHi1E
 
+I used several different online tone generators to try to match my tinnitus. Eventually I decided I'm somewhere near 5800Hz. The default notch is pretty wide, I imagine that the more precise you can make the notch the better (`--width` has a default of `1.0`, a full octave), but I'm kind of tone-deaf and I can only approximate my tone.  
+
 ## Features
 
 * **Spectral Noise Generation:** Validated generators for White ($1/f^0$), Pink ($1/f^1$), and Brown ($1/f^2$) noise.
 * **Precision Notching:** Configurable center frequency and Q-factor (bandwidth).
 * **Verification Analysis:** Integrated spectral analyzer to confirm notch depth in generated or existing audio files.
-* **High-Fidelity Output:** Defaults to FLAC (lossless) with float32 processing.
+* **High-Fidelity Output:** Defaults to FLAC (lossless) with float32 processing. Also outputs .OGG or .WAV. Apple ALAC (.m4a) manual conversion from FFMpeg. 
+
+**Important: Use good earphones and do not convert to a lossy format, which smear the high frequencies**
 
 ## ⚠️ System Requirements
 
@@ -59,10 +63,10 @@ The package exposes a single CLI entry point tinnitus with two subcommands.
 
 1. Generate Noise
 
-Generate 60 seconds of Pink noise with a notch at 4000 Hz.
+Generate 60 seconds of Pink noise with a notch at 6000 Hz.
 
 ```bash
-tinnitus generate --freq 4000 --type pink --duration 60 --output therapy.flac
+tinnitus generate --freq 6000 --type pink --duration 60 --output therapy.flac
 Flag	Description	Default
 --freq	Center frequency of the notch (Hz)	Required
 --type	Noise color (white, pink, brown)	pink
@@ -78,10 +82,31 @@ Analyze an audio file to confirm the notch depth. Requires FFmpeg.
 tinnitus verify therapy.flac --freq 4000 --plot analysis.png
 ```
 
+3. On Mac, use FFMpeg to convert to Apple's ALAC
+
+```bash
+ffmpeg -i therapy.flac -c:a alac therapy.m4a
+```
+
 ### Development
 Run the test suite to validate argument parsing, spectral physics, and CLI dispatch.
 
 `uv run pytest`
 
-Pull requests welcome!
+Run the type checker.
 
+`uv run pyright`
+
+Pull requests welcome! 
+
+(While I didn't use Claude for this, I've created a CLAUDE.md that hopefully captures my style preferences. I'm all for LLM assistance but I have strong opinions about code.)
+
+### Roadmap
+
+I'd never even heard of notched sound therapy until two days ago and slapped this together for my own experimentation. I'm an idiot and know nothing about potential harms or side effects: you should not use this software without knowing more about this subject than I do. 
+
+I think the next logical feature would be "tone quality," sine/square/triangle/sawtooth, etc. but my initial thought implies $n(\text{NoiseType}) \ast n(\text{ToneQuality})$ outputs and so `NoiseStrategy` goes from trivial to at least somewhat complex. I'll probably not do that until I see more evidence that this type of ~~therapy~~ educational exploration has an effect.    
+
+After that, I'd think adding a notch to existing music files. For my own purposes, I'm not planning on that, because I tune out sound while reading, writing, or coding, so pink noise is as good as music for me. 
+
+Code-wise it seems trivial enough, but then you have to manage a library of original and `_notched` music and that seems like it might be a pain. 
