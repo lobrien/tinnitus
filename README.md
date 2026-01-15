@@ -31,7 +31,7 @@ I used several different online tone generators to try to match my tinnitus. Eve
 ## Features
 
 * **Spectral Noise Generation:** Validated generators for White ($1/f^0$), Pink ($1/f^1$), and Brown ($1/f^2$) noise.
-* **Precision Notching:** Configurable center frequency and Q-factor (bandwidth).
+* **Precision Notching:** Configurable center frequency and bandwidth (in octaves).
 * **Verification Analysis:** Integrated spectral analyzer to confirm notch depth in generated or existing audio files.
 * **High-Fidelity Output:** Defaults to FLAC (lossless) with float32 processing. Also outputs .OGG or .WAV. Apple ALAC (.m4a) manual conversion from FFMpeg. 
 
@@ -59,7 +59,7 @@ uv pip install -e .
 
 ### Usage
 
-The package exposes a single CLI entry point tinnitus with two subcommands.
+The package exposes a single CLI entry point `tinnitus` with two subcommands.
 
 1. Generate Noise
 
@@ -70,7 +70,7 @@ tinnitus generate --freq 6000 --type pink --duration 60 --output therapy.flac
 Flag	Description	Default
 --freq	Center frequency of the notch (Hz)	Required
 --type	Noise color (white, pink, brown)	pink
---width	Q-factor of the notch (~1.414 is 1 octave)	1.414
+--width	bandwith of the notch in octaves	1.0
 --output	Output filename (.flac, .wav, .ogg)	output.flac
 ```
 
@@ -79,7 +79,7 @@ Flag	Description	Default
 Analyze an audio file to confirm the notch depth. Requires FFmpeg.
 
 ```bash
-tinnitus verify therapy.flac --freq 4000 --plot analysis.png
+tinnitus verify therapy.flac --freq 6000 --plot analysis.png
 ```
 
 3. On Mac, use FFMpeg to convert to Apple's ALAC
@@ -89,13 +89,12 @@ ffmpeg -i therapy.flac -c:a alac therapy.m4a
 ```
 
 ### Development
-Run the test suite to validate argument parsing, spectral physics, and CLI dispatch.
+Run the typechecker and test suite to validate argument parsing, spectral physics, and CLI dispatch.
 
-`uv run pytest`
-
-Run the type checker.
-
-`uv run pyright`
+```bash
+uv run mypy
+uv run pytest
+```
 
 Pull requests welcome! 
 
