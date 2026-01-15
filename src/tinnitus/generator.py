@@ -103,7 +103,7 @@ def config_from_args(args: argparse.Namespace) -> AudioConfig:
         output_file=args.output
     )
 
-def print_progress(current_chunk: int, total_chunks: int):
+def print_progress(current_chunk: int, total_chunks: int) -> None:
     percent = (current_chunk / total_chunks) * 100
     sys.stdout.write(f"\rProgress: [{percent:6.2f}%] processing chunk {current_chunk}/{total_chunks}")
     sys.stdout.flush()

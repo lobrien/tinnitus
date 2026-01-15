@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from tinnitus.generator import parse_arguments, AudioConfig, NoiseType
 
-def test_defaults():
+def test_defaults() -> None:
     """Verify default values when only required args are provided."""
     argv = ["--freq", "4000"]
     config = parse_arguments(argv)
@@ -14,7 +14,7 @@ def test_defaults():
     # CHANGE: Updated expectation to match the new .flac default
     assert config.output_file == Path("output.flac")
 
-def test_custom_configuration():
+def test_custom_configuration() -> None:
     """Verify all flags override defaults correctly."""
     argv = [
         "--type", "brown",
@@ -34,17 +34,17 @@ def test_custom_configuration():
     assert config.sample_rate == 48000
     assert config.output_file == Path("test.wav")
 
-def test_enum_validation():
+def test_enum_validation() -> None:
     """Argparse should exit/fail if an invalid noise type is provided."""
     with pytest.raises(SystemExit):
         parse_arguments(["--freq", "1000", "--type", "invalid_color"])
 
-def test_missing_required_freq():
+def test_missing_required_freq() -> None:
     """The --freq argument is mandatory."""
     with pytest.raises(SystemExit):
         parse_arguments([])
 
-def test_path_handling(tmp_path):
+def test_path_handling(tmp_path : str) -> None:
     """Ensure output path is correctly converted to a Path object."""
     output_path = tmp_path / "subdir" / "out.wav"
     argv = ["--freq", "500", "--output", str(output_path)]

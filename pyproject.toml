@@ -13,6 +13,7 @@ classifiers = [
 dependencies = [
     "matplotlib>=3.10.0",
     "numpy>=2.0.0",
+    "pip>=25.3",
     "scipy>=1.10.0",
     "soundfile>=0.12.0",
 ]
@@ -26,6 +27,7 @@ tinnitus = "tinnitus.cli:main"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.19.1",
     "pytest>=8.0.0",
 ]
 
@@ -39,3 +41,12 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = "src"
 testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+files = ["src"] # Note: types in tests/ can be more trouble than they're worth
+
+[[tool.mypy.overrides]]
+module="soundfile"
+ignore_missing_imports = true
+disable_error_code = ["import-untyped"]

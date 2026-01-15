@@ -3,7 +3,7 @@ import sys
 import logging
 from tinnitus import generator, verify_notch
 
-def main():
+def main() -> None:
     # Centralized Logging Config
     logging.basicConfig(
         level=logging.INFO, 
@@ -36,11 +36,11 @@ def main():
     args = parser.parse_args()
 
     if args.command == "generate":
-        config = generator.config_from_args(args)
-        generator.run(config)
+        gen_config = generator.config_from_args(args)
+        generator.run(gen_config)
     elif args.command == "verify":
-        config = verify_notch.config_from_args(args)
-        verify_notch.run(config)
+        ver_config = verify_notch.config_from_args(args)
+        verify_notch.run(ver_config)
 
 if __name__ == "__main__":
     main()

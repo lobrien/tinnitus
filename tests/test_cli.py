@@ -4,7 +4,7 @@ from unittest.mock import patch, ANY
 from tinnitus.cli import main
 from tinnitus.generator import NoiseType
 
-def test_cli_generate_dispatch():
+def test_cli_generate_dispatch() -> None:
     """
     Verify 'tinnitus generate' calls generator.run with correct config.
     """
@@ -23,7 +23,7 @@ def test_cli_generate_dispatch():
             assert config_arg.duration_sec == 5
             assert config_arg.noise_type == NoiseType.PINK  # Default
 
-def test_cli_verify_dispatch():
+def test_cli_verify_dispatch() -> None:
     """
     Verify 'tinnitus verify' calls verify_notch.run with correct config.
     """
@@ -40,7 +40,7 @@ def test_cli_verify_dispatch():
                 assert str(config_arg.input_file) == "my_audio.wav"
                 assert config_arg.target_freq == 4000.0
 
-def test_cli_help():
+def test_cli_help() -> None:
     """
     Verify the help command exits cleanly (SystemExit 0).
     """
@@ -49,7 +49,7 @@ def test_cli_help():
             main()
         assert e.value.code == 0
 
-def test_cli_invalid_command():
+def test_cli_invalid_command() -> None:
     """
     Verify invalid subcommands exit with error (SystemExit 2).
     """

@@ -31,7 +31,7 @@ def calculate_spectral_slope(data: np.ndarray, fs: int) -> float:
     log_psd = np.log10(valid_psd)
     
     slope, _ = np.polyfit(log_freqs, log_psd, 1)
-    return slope
+    return float(slope)
 
 @pytest.fixture(scope="module")
 def generated_samples():
@@ -51,7 +51,7 @@ def generated_samples():
     }
     return samples
 
-def test_white_noise_physics(generated_samples):
+def test_white_noise_physics(generated_samples) -> None:
     """
     White noise should have equal power per frequency bin.
     Expected Slope: 0
@@ -63,7 +63,7 @@ def test_white_noise_physics(generated_samples):
     assert slope == pytest.approx(0.0, abs=0.15), \
         f"White noise spectral slope {slope:.2f} is not flat (expected 0.0)"
 
-def test_pink_noise_physics(generated_samples):
+def test_pink_noise_physics(generated_samples) -> None:
     """
     Pink noise should decrease by 3dB per octave (1/f power).
     Expected Slope: -1
@@ -74,7 +74,7 @@ def test_pink_noise_physics(generated_samples):
     assert slope == pytest.approx(-1.0, abs=0.15), \
         f"Pink noise spectral slope {slope:.2f} incorrect (expected -1.0)"
 
-def test_brown_noise_physics(generated_samples):
+def test_brown_noise_physics(generated_samples) -> None:
     """
     Brown noise should decrease by 6dB per octave (1/f^2 power).
     Expected Slope: -2

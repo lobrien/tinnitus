@@ -51,7 +51,7 @@ def compute_spectrum(data: np.ndarray, rate: int) -> Tuple[np.ndarray, np.ndarra
 def analyze_notch_depth(freqs: np.ndarray, power_db: np.ndarray, target_freq: float) -> float:
     idx_target = np.abs(freqs - target_freq).argmin()
     baseline_power = np.median(power_db)
-    return baseline_power - power_db[idx_target]
+    return float(baseline_power - power_db[idx_target])
 
 def generate_plot(freqs: np.ndarray, power_db: np.ndarray, target_freq: float, output_path: Path) -> None:
     plt.figure(figsize=(12, 7))
