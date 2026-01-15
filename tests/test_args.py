@@ -11,7 +11,8 @@ def test_defaults():
     assert config.noise_type == NoiseType.PINK
     assert config.duration_sec == 60
     assert config.sample_rate == 44100
-    assert config.output_file == Path("output.wav")
+    # FIX: Default is now output.flac
+    assert config.output_file == Path("output.flac") 
 
 def test_custom_configuration():
     """Verify all flags override defaults correctly."""
