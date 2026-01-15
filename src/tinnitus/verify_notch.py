@@ -1,15 +1,21 @@
 import sys
 import logging
 import subprocess
+import argparse
 import numpy as np
 from scipy.signal import welch
 import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, NamedTuple, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
+
+class VerificationConfig(NamedTuple):
+    input_file: Path
+    target_freq: float
+    output_plot: Optional[Path]
 
 def get_audio_properties(file_path: Path) -> int:
     """
@@ -30,7 +36,9 @@ def get_audio_properties(file_path: Path) -> int:
         return sample_rate
     except (subprocess.CalledProcessError, ValueError) as e:
         logger.error(f"Failed to probe audio file: {e}")
-        sys.exit(1)
+        # In a library context, we would raise, but for a CLI tool, exiting is acceptable
+        # strictly if caught by main, but raising is better for testing.
+        raise RuntimeError(f"FFprobe failed: {e}")
 
 def decode_audio_stream(file_path: Path, sample_rate: int) -> np.ndarray:
     """
@@ -46,7 +54,6 @@ def decode_audio_stream(file_path: Path, sample_rate: int) -> np.ndarray:
             "-"                # Output to stdout
         ]
         
-        # Increase buffer size for large files to prevent pipe blocking
         process = subprocess.Popen(
             cmd, 
             stdout=subprocess.PIPE, 
@@ -59,36 +66,32 @@ def decode_audio_stream(file_path: Path, sample_rate: int) -> np.ndarray:
         if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, cmd)
 
-        # Convert bytes to numpy array
         audio_array = np.frombuffer(raw_data, dtype=np.float32)
         return audio_array
         
     except Exception as e:
         logger.error(f"Failed to decode audio stream: {e}")
-        sys.exit(1)
+        raise RuntimeError(f"FFmpeg failed: {e}")
 
 def compute_spectrum(data: np.ndarray, rate: int) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the Power Spectral Density (PSD) using Welch's method.
     """
-    # nperseg=4096 gives ~10-12 Hz resolution
     freqs, power = welch(data, fs=rate, nperseg=4096)
-    
-    # Convert to dB, adding epsilon to avoid log(0)
     power_db = 10 * np.log10(power + 1e-10)
     return freqs, power_db
 
 def analyze_notch_depth(freqs: np.ndarray, power_db: np.ndarray, target_freq: float) -> float:
     """
     Calculates the attenuation at the target frequency relative to the baseline.
+    Returns depth in dB (positive value = attenuation).
     """
     idx_target = np.abs(freqs - target_freq).argmin()
     power_at_target = power_db[idx_target]
     
-    # Baseline: Median power to reject outliers (like the notch itself)
+    # Baseline: Median power to reject outliers
     baseline_power = np.median(power_db)
     
-    # Return positive depth value
     return baseline_power - power_at_target
 
 def generate_plot(freqs: np.ndarray, power_db: np.ndarray, target_freq: float, output_path: Path) -> None:
@@ -98,21 +101,17 @@ def generate_plot(freqs: np.ndarray, power_db: np.ndarray, target_freq: float, o
     plt.figure(figsize=(12, 7))
     plt.semilogx(freqs, power_db, label='Spectral Density', color='#2c3e50', alpha=0.9, linewidth=1)
     
-    # Visual Guides
-    plt.axvline(x=target_freq, color='#e74c3c', linestyle='--', label=f'Target Center: {target_freq} Hz')
+    plt.axvline(x=target_freq, color='#e74c3c', linestyle='--', label=f'Target: {target_freq} Hz')
     
-    # Theoretical 1-octave bounds
     lower_bound = target_freq * (2 ** -0.5)
     upper_bound = target_freq * (2 ** 0.5)
     plt.axvspan(lower_bound, upper_bound, color='#e74c3c', alpha=0.15, label='1 Octave Bandwidth')
 
     plt.title(f'Notch Filter Analysis (Target: {target_freq} Hz)')
     plt.xlabel('Frequency (Hz) [Log Scale]')
-    plt.ylabel('Power Spectral Density (dB/Hz)')
+    plt.ylabel('PSD (dB/Hz)')
     plt.legend(loc='upper right')
     plt.grid(True, which="both", ls="-", alpha=0.3)
-    
-    # Set x-axis limits to relevant hearing range
     plt.xlim(100, 20000)
     
     try:
@@ -120,36 +119,52 @@ def generate_plot(freqs: np.ndarray, power_db: np.ndarray, target_freq: float, o
         logger.info(f"Verification plot saved to: {output_path}")
     except Exception as e:
         logger.error(f"Failed to save plot: {e}")
+    finally:
+        plt.close()
+
+def parse_arguments(argv: Optional[list[str]] = None) -> VerificationConfig:
+    parser = argparse.ArgumentParser(description="Verify notch filter depth in audio files.")
+    parser.add_argument("file", type=Path, help="Input audio file (m4a, wav, etc)")
+    parser.add_argument("--freq", type=float, required=True, help="Target notch frequency (Hz)")
+    parser.add_argument("--plot", type=Path, default=None, help="Optional path to save analysis plot")
+    
+    args = parser.parse_args(argv)
+    
+    # Default plot name if not provided but useful to have
+    if args.plot is None:
+        args.plot = args.file.with_suffix('.png')
+
+    return VerificationConfig(args.file, args.freq, args.plot)
 
 def main():
-    if len(sys.argv) < 2:
-        logger.error("Usage: python verify_notch_m4a.py <file.m4a>")
+    try:
+        config = parse_arguments()
+    except SystemExit:
         sys.exit(1)
 
-    input_path = Path(sys.argv[1])
-    target_freq = 5800
-
-    if not input_path.exists():
-        logger.error(f"File not found: {input_path}")
+    if not config.input_file.exists():
+        logger.error(f"File not found: {config.input_file}")
         sys.exit(1)
 
-    logger.info(f"Processing {input_path.name}...")
+    try:
+        rate = get_audio_properties(config.input_file)
+        data = decode_audio_stream(config.input_file, rate)
+        freqs, power_db = compute_spectrum(data, rate)
+        depth = analyze_notch_depth(freqs, power_db, config.target_freq)
+        
+        logger.info(f"Measured Notch Depth: {depth:.2f} dB")
+        
+        if depth < 10:
+            logger.warning("WARNING: Notch depth is shallow (< 10dB).")
+        else:
+            logger.info("SUCCESS: Deep notch detected.")
 
-    # Pipeline
-    rate = get_audio_properties(input_path)
-    data = decode_audio_stream(input_path, rate)
-    freqs, power_db = compute_spectrum(data, rate)
-    depth = analyze_notch_depth(freqs, power_db, target_freq)
-    
-    logger.info(f"Measured Notch Depth: {depth:.2f} dB")
-    
-    if depth < 10:
-        logger.warning("WARNING: Notch depth is shallow. Check encoding parameters.")
-    else:
-        logger.info("SUCCESS: Deep notch detected.")
-
-    output_plot = input_path.with_suffix('.png')
-    generate_plot(freqs, power_db, target_freq, output_plot)
+        if config.output_plot:
+            generate_plot(freqs, power_db, config.target_freq, config.output_plot)
+            
+    except RuntimeError as e:
+        logger.error(str(e))
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
