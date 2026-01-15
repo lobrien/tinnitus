@@ -28,7 +28,8 @@ def test_custom_configuration():
     
     assert config.noise_type == NoiseType.BROWN
     assert config.center_freq == 1000.0
-    assert config.notch_width_q == 2.0
+    # 2 octaves -> Q = sqrt(4)/(4-1) = 2/3
+    assert config.notch_width_q == pytest.approx(0.6666, rel=1e-3)
     assert config.duration_sec == 10
     assert config.sample_rate == 48000
     assert config.output_file == Path("test.wav")

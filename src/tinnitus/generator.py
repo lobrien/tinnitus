@@ -78,8 +78,8 @@ def setup_parser(parser: argparse.ArgumentParser) -> None:
                         help="Type of spectral noise to generate.")
     parser.add_argument("--freq", type=float, required=True,
                         help="Center frequency of the notch filter (Hz).")
-    parser.add_argument("--width", type=float, default=1.414,
-                        help="Q-factor of the notch (approx 1.414 for 1 octave).")
+    parser.add_argument("--width", type=float, default=1.0,
+                        help="Notch width in octaves (default: 1.0).")
     parser.add_argument("--duration", type=int, default=60,
                         help="Duration of audio to generate in seconds.")
     parser.add_argument("--output", type=Path, default=Path("output.flac"),
@@ -88,10 +88,15 @@ def setup_parser(parser: argparse.ArgumentParser) -> None:
                         help="Sample rate (Hz).")
 
 def config_from_args(args: argparse.Namespace) -> AudioConfig:
+    # Convert width (octaves) to Q-factor
+    # Q = sqrt(2&bw) / (2^bw-1)
+    bw = args.width
+    q_factor = np.sqrt(2**bw) / (2**bw-1)
+
     return AudioConfig(
         noise_type=NoiseType(args.type),
         center_freq=args.freq,
-        notch_width_q=args.width,
+        notch_width_q=q_factor,
         duration_sec=args.duration,
         sample_rate=args.rate,
         chunk_duration=10,
