@@ -3,7 +3,7 @@ import sys
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import NamedTuple, Optional, List
+from typing import NamedTuple, Callable, Dict
 
 import numpy as np
 import scipy.io.wavfile as wav
@@ -17,8 +17,10 @@ class NoiseType(str, Enum):
     PINK = "pink"
     BROWN = "brown"
 
+# Type definition for a noise generation strategy
+NoiseStrategy = Callable[[int], np.ndarray]
+
 class AudioConfig(NamedTuple):
-    """Immutable configuration container."""
     noise_type: NoiseType
     center_freq: float
     notch_width_q: float
@@ -27,58 +29,64 @@ class AudioConfig(NamedTuple):
     chunk_duration: int
     output_file: Path
 
+# --- Pure Functional Noise Strategies ---
+
+def _strategy_white(num_samples: int) -> np.ndarray:
+    return np.random.randn(num_samples).astype(np.float32)
+
+def _strategy_brown(num_samples: int) -> np.ndarray:
+    """
+    Brownian noise: Integration of white noise (1/f^2).
+    """
+    white = np.random.randn(num_samples)
+    return np.cumsum(white).astype(np.float32)
+
+def _strategy_pink(num_samples: int) -> np.ndarray:
+    """
+    Pink noise: 1/f spectral synthesis.
+    """
+    white = np.random.randn(num_samples)
+    spectrum = np.fft.rfft(white)
+    indices = np.arange(1, len(spectrum) + 1)
+    scale = 1 / np.sqrt(indices)
+    spectrum = spectrum * scale
+    pink = np.fft.irfft(spectrum)
+    
+    max_val = np.max(np.abs(pink))
+    if max_val > 0:
+        pink /= max_val
+    return pink.astype(np.float32)
+
+# Dispatch Table
+NOISE_DISPATCH: Dict[NoiseType, NoiseStrategy] = {
+    NoiseType.WHITE: _strategy_white,
+    NoiseType.BROWN: _strategy_brown,
+    NoiseType.PINK: _strategy_pink,
+}
+
 class AudioProcessor:
     """
-    Handles the computational logic for generating and filtering audio.
-    Stateless functional core.
+    Stateless functional core for audio manipulation.
     """
     
     @staticmethod
-    def generate_noise_chunk(noise_type: NoiseType, num_samples: int) -> np.ndarray:
+    def generate_noise_chunk(strategy: NoiseStrategy, num_samples: int) -> np.ndarray:
         """
-        Generates a chunk of noise based on the specified type.
+        Executes the provided noise strategy.
         """
-        # Phase 2 will effectively abstract this into a Strategy pattern.
-        # For Phase 1, we map the enum to the implementation here.
-        if noise_type == NoiseType.PINK:
-            return AudioProcessor._pink_noise(num_samples)
-        elif noise_type == NoiseType.WHITE:
-             return np.random.randn(num_samples).astype(np.float32)
-        elif noise_type == NoiseType.BROWN:
-            # Integration of white noise (1/f^2)
-            white = np.random.randn(num_samples)
-            return np.cumsum(white).astype(np.float32)
-        else:
-            raise ValueError(f"Unsupported noise type: {noise_type}")
-
-    @staticmethod
-    def _pink_noise(num_samples: int) -> np.ndarray:
-        """Internal 1/f spectral synthesis."""
-        white = np.random.randn(num_samples)
-        spectrum = np.fft.rfft(white)
-        indices = np.arange(1, len(spectrum) + 1)
-        scale = 1 / np.sqrt(indices)
-        spectrum = spectrum * scale
-        pink = np.fft.irfft(spectrum)
-        
-        max_val = np.max(np.abs(pink))
-        if max_val > 0:
-            pink /= max_val
-        return pink.astype(np.float32)
+        return strategy(num_samples)
 
     @staticmethod
     def apply_notch_filter(audio_data: np.ndarray, sample_rate: int, center_freq: float, q_factor: float) -> np.ndarray:
-        """
-        Applies the notch filter to a specific data chunk using zero-phase filtering.
-        """
         if center_freq <= 0:
             return audio_data
 
         b, a = signal.iirnotch(w0=center_freq, Q=q_factor, fs=sample_rate)
+        # zero-phase filtering (filtfilt) is preferred for static noise masking
         filtered = signal.filtfilt(b, a, audio_data)
         return filtered.astype(np.float32)
 
-def parse_arguments(argv: Optional[List[str]] = None) -> AudioConfig:
+def parse_arguments(argv: list[str] | None = None) -> AudioConfig:
     parser = argparse.ArgumentParser(
         description="Generate spectral noise with a specific frequency notch.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -105,7 +113,7 @@ def parse_arguments(argv: Optional[List[str]] = None) -> AudioConfig:
         notch_width_q=args.width,
         duration_sec=args.duration,
         sample_rate=args.rate,
-        chunk_duration=10, # Fixed chunk size for memory management
+        chunk_duration=10,
         output_file=args.output
     )
 
@@ -122,16 +130,15 @@ def main():
     chunk_samples = config.sample_rate * config.chunk_duration
     total_chunks = int(np.ceil(total_samples / chunk_samples))
     
-    # Pre-allocate buffer (Float32)
+    # Select Strategy
+    strategy = NOISE_DISPATCH[config.noise_type]
+    
     full_buffer = np.zeros(total_samples, dtype=np.float32)
 
     logging.info(f"Generating {config.noise_type.value.upper()} noise")
     logging.info(f"Notch: {config.center_freq} Hz (Q={config.notch_width_q})")
-    logging.info(f"Output: {config.output_file}")
 
     # Processing Loop
-    processor = AudioProcessor()
-    
     for i in range(total_chunks):
         start_idx = i * chunk_samples
         end_idx = min(start_idx + chunk_samples, total_samples)
@@ -139,11 +146,11 @@ def main():
         
         if current_len <= 0: break
 
-        # 1. Generate
-        raw_chunk = processor.generate_noise_chunk(config.noise_type, current_len)
+        # 1. Generate via Strategy
+        raw_chunk = AudioProcessor.generate_noise_chunk(strategy, current_len)
         
         # 2. Filter
-        filtered_chunk = processor.apply_notch_filter(
+        filtered_chunk = AudioProcessor.apply_notch_filter(
             raw_chunk, config.sample_rate, config.center_freq, config.notch_width_q
         )
         
@@ -152,19 +159,18 @@ def main():
         
         print_progress(i + 1, total_chunks)
 
-    print() # Newline
+    print() 
 
     # Final IO Phase
     logging.info("Normalizing and Saving to disk...")
     
     max_amp = np.max(np.abs(full_buffer))
     if max_amp > 0:
-        # Normalize to -3dB
         full_buffer = full_buffer / max_amp * 0.707
     
     try:
         wav.write(config.output_file, config.sample_rate, full_buffer)
-        logging.info("Success.")
+        logging.info(f"Success: {config.output_file}")
     except IOError as e:
         logging.error(f"Write failed: {e}")
         sys.exit(1)
