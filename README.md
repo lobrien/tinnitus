@@ -104,6 +104,10 @@ Pull requests welcome!
 
 I'd never even heard of notched sound therapy until two days ago and slapped this together for my own experimentation. I'm an idiot and know nothing about potential harms or side effects: you should not use this software without knowing more about this subject than I do. 
 
+I will **not** be adding asymmetrical stereo. Even if one has asymmetric tinnitus (as do I), apparently it's important that both ears get the same input. If you know different, send me the paper and I'll consider it.
+
+Actually, if **anything** about this flies in the face of science, send me the paper. 
+
 I think the next logical feature would be "tone quality," sine/square/triangle/sawtooth, etc. but my initial thought implies $n(\text{NoiseType}) \ast n(\text{ToneQuality})$ outputs and so `NoiseStrategy` goes from trivial to at least somewhat complex. I'll probably not do that until I see more evidence that this type of ~~therapy~~ educational exploration has an effect.    
 
 After that, I'd think adding a notch to existing music files. For my own purposes, I'm not planning on that, because I tune out sound while reading, writing, or coding, so pink noise is as good as music for me. 
