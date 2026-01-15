@@ -1,4 +1,8 @@
-# Tinnitus Notch Filter
+# Tinnitus Notch Filter File Generator
+**Command-line only**
+
+Python, developed on MacOS
+(I used Python 3.13, but the code doesn't use anything more advanced than type hints)
 
 **⚠️ DISCLAIMER: NOT MEDICAL ADVICE**
 
@@ -32,7 +36,7 @@ https://www.youtube.com/watch?v=O8ypzXTHi1E
 ## ⚠️ System Requirements
 
 **External Dependency: FFmpeg**
-The `verify` command relies on `ffmpeg` and `ffprobe` to decode audio streams and analyze sample rates. These binaries must be installed and available in your system `$PATH`.
+The `verify` command relies on `ffmpeg` and `ffprobe` to decode audio streams and analyze sample rates. These binaries must be installed and available in your system `$PATH`. (You can still generate files without `ffmpeg`, but why wouldn't you have `ffmpeg` on your system?)
 
 * See [INSTALLATION.md](INSTALLATION.md) for OS-specific setup instructions.
 
@@ -47,7 +51,9 @@ cd tinnitus
 
 # Install with uv (recommended)
 uv pip install -e .
-Usage
+```
+
+### Usage
 
 The package exposes a single CLI entry point tinnitus with two subcommands.
 
@@ -55,21 +61,27 @@ The package exposes a single CLI entry point tinnitus with two subcommands.
 
 Generate 60 seconds of Pink noise with a notch at 4000 Hz.
 
-Bash
+```bash
 tinnitus generate --freq 4000 --type pink --duration 60 --output therapy.flac
 Flag	Description	Default
 --freq	Center frequency of the notch (Hz)	Required
 --type	Noise color (white, pink, brown)	pink
 --width	Q-factor of the notch (~1.414 is 1 octave)	1.414
 --output	Output filename (.flac, .wav, .ogg)	output.flac
+```
+
 2. Verify Audio
 
 Analyze an audio file to confirm the notch depth. Requires FFmpeg.
 
-Bash
+```bash
 tinnitus verify therapy.flac --freq 4000 --plot analysis.png
-Development
+```
+
+### Development
 Run the test suite to validate argument parsing, spectral physics, and CLI dispatch.
 
-Bash
-uv run pytest
+`uv run pytest`
+
+Pull requests welcome!
+
