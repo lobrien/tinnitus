@@ -1,17 +1,9 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "numpy",
-#     "scipy",
-# ]
-# ///
-
 import argparse
 import sys
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, Optional, List
 
 import numpy as np
 import scipy.io.wavfile as wav
@@ -86,7 +78,7 @@ class AudioProcessor:
         filtered = signal.filtfilt(b, a, audio_data)
         return filtered.astype(np.float32)
 
-def parse_arguments() -> AudioConfig:
+def parse_arguments(argv: Optional[List[str]] = None) -> AudioConfig:
     parser = argparse.ArgumentParser(
         description="Generate spectral noise with a specific frequency notch.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -105,7 +97,7 @@ def parse_arguments() -> AudioConfig:
     parser.add_argument("--rate", type=int, default=44100,
                         help="Sample rate (Hz).")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     return AudioConfig(
         noise_type=NoiseType(args.type),

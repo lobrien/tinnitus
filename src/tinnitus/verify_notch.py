@@ -1,12 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "numpy",
-#     "scipy",
-#     "matplotlib"
-# ]
-# ///
-
 import sys
 import logging
 import subprocess

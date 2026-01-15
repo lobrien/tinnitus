@@ -1,12 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "pytest",
-#     "numpy",
-#     "scipy",
-# ]
-# ///
-
 import pytest
 from pathlib import Path
 from tinnitus.generator import parse_arguments, AudioConfig, NoiseType
